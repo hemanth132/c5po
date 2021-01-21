@@ -19,7 +19,7 @@ def get_rows_columns_map(table_result, blocks_map):
                     if row_index not in rows:
                         # create new row
                         rows[row_index] = {}
-                        
+
                     # get the text value
                     rows[row_index][col_index] = get_text(cell, blocks_map)
     return rows
@@ -35,13 +35,12 @@ def get_text(result, blocks_map):
                     if word['BlockType'] == 'WORD':
                         text += word['Text'] + ' '
                     if word['BlockType'] == 'SELECTION_ELEMENT':
-                        if word['SelectionStatus'] =='SELECTED':
-                            text +=  'X '    
+                        if word['SelectionStatus'] == 'SELECTED':
+                            text += 'X '
     return text
 
 
 def get_table_csv_results(file_name):
-
     with open(file_name, 'rb') as file:
         img_test = file.read()
         bytes_test = bytearray(img_test)
@@ -54,7 +53,7 @@ def get_table_csv_results(file_name):
     response = client.analyze_document(Document={'Bytes': bytes_test}, FeatureTypes=['TABLES'])
 
     # Get the text blocks
-    blocks=response['Blocks']
+    blocks = response['Blocks']
     pprint(blocks)
 
     blocks_map = {}
@@ -69,41 +68,48 @@ def get_table_csv_results(file_name):
 
     csv = ''
     for index, table in enumerate(table_blocks):
-        csv += generate_table_csv(table, blocks_map, index +1)
+        csv += generate_table_csv(table, blocks_map, index + 1)
         csv += '\n\n'
 
     return csv
+
 
 def generate_table_csv(table_result, blocks_map, table_index):
     rows = get_rows_columns_map(table_result, blocks_map)
 
     table_id = 'Table_' + str(table_index)
-    
+
     # get cells.
     csv = 'Table: {0}\n\n'.format(table_id)
 
+    resultMap = []
+
     for row_index, cols in rows.items():
-        
+        jsonMap = []
         for col_index, text in cols.items():
             csv += '{}'.format(text) + ","
+            jsonMap.append(text.strip())
+
+        resultMap.append(jsonMap)
+
         csv += '\n'
-        
+
     csv += '\n\n\n'
-    return csv
+    return resultMap
 
-def main(file_name):
-    table_csv = get_table_csv_results(file_name)
+# def main(file_name):
+#     table_csv = get_table_csv_results(file_name)
+#
+#     output_file = 'output.csv'
+#
+#     # replace content
+#     with open(output_file, "wt") as fout:
+#         fout.write(table_csv)
+#
+#     # show the results
+#     print('CSV OUTPUT FILE: ', output_file)
 
-    output_file = 'output.csv'
-
-    # replace content
-    with open(output_file, "wt") as fout:
-        fout.write(table_csv)
-
-    # show the results
-    print('CSV OUTPUT FILE: ', output_file)
-
-
-if __name__ == "__main__":
-    file_name = sys.argv[1]
-    main(file_name)
+#
+# if __name__ == "__main__":
+#     file_name = sys.argv[1]
+#     main(file_name)

@@ -7,6 +7,8 @@ app.config.from_mapping(
     SECRET_KEY='dev',
 )
 
+app.config.from_pyfile('config.py')
+
 
 # a simple page that says hello
 @app.route('/hello')

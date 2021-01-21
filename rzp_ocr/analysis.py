@@ -1,31 +1,47 @@
-from rzp_ocr import app, ocr
+from rzp_ocr import app, ocr, gstinResponse
 from flask import request
 import boto3
+import instance.config
 
 
 @app.route('/ocr/start_analysis', methods=['POST'])
 def start_analysis():
     content = request.get_json()
-    return content
+
+    csv = start_analysis_from_s3(content['file_name'], content['file_type'])
+    return csv
 
 
-def get_table_csv_results_from_s3(file_name):
-    # process using image bytes
-    # get the results
-    client = boto3.client('textract')
+@app.route('/ocr/fetch_analysis', methods=['POST'])
+def fetch_analysis():
+    content = request.get_json()
 
-    response = client.start_document_analysis(
-        DocumentLocation={
-        'S3Object': {
-            'Bucket': 'textract-console-ap-south-1-1e3d161d-8e37-4b30-9df2-f2add8139d4',
-            'Name': 'string',
-        }
-    },
+    csv = fetch_analysis_from_ocr(content['JobId'])
+
+    print(type(csv))
+    result = gstinResponse.create_gstin_response(csv)
+    print(result)
+    return result
+
+
+def aws_client():
+    client = boto3.client('textract',
+                          aws_access_key_id=app.config["AWS_ACCESS_KEY_ID"],
+                          aws_secret_access_key=app.config["AWS_SECRET_ACCESS_KEY"]
+                          )
+
+    return client
+
+
+def fetch_analysis_from_ocr(job_id):
+    client = aws_client()
+    response = client.get_document_analysis(
+        JobId=job_id
     )
 
-    # Get the text blocks
-    blocks=response['Blocks']
-    pprint(blocks)
+    #print(response)
+    blocks = response['Blocks']
+    #print(blocks)
 
     blocks_map = {}
     table_blocks = []
@@ -37,9 +53,44 @@ def get_table_csv_results_from_s3(file_name):
     if len(table_blocks) <= 0:
         return "<b> NO Table FOUND </b>"
 
-    csv = ''
+    result = []
     for index, table in enumerate(table_blocks):
-        csv += generate_table_csv(table, blocks_map, index +1)
-        csv += '\n\n'
+        result = ocr.generate_table_csv(table, blocks_map, index + 1)
+        break
 
-    return csv
+    print(result)
+    print(type(result))
+
+    # csv = ''
+    # for index, table in enumerate(table_blocks):
+    #     csv += ocr.generate_table_csv(table, blocks_map, index + 1)
+    #     csv += '\n\n'
+    #
+    # return csv
+    return result
+
+
+def start_analysis_from_s3(file_name, fileType):
+    # process using image bytes
+    # get the results
+
+    client = aws_client()
+    bucket = app.config["AWS_BUCKET"]
+    snsTopic = app.config["AWS_SNS_TOPIC"]
+    roleAws = app.config["AWS_SNS_ROLE"]
+
+    response = client.start_document_analysis(
+        DocumentLocation={
+            'S3Object': {
+                'Bucket': bucket,
+                'Name': file_name,
+            }, },
+        FeatureTypes=['TABLES'],
+        JobTag=fileType,
+        NotificationChannel={
+            'SNSTopicArn': snsTopic,
+            'RoleArn': roleAws
+        },
+    )
+
+    return response
