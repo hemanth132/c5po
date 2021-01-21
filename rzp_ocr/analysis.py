@@ -1,6 +1,7 @@
-from rzp_ocr import app, ocr, gstinResponse
+from rzp_ocr import app, ocr, gstinResponse, msmeResponse
 from flask import request
 import boto3
+import json
 import instance.config
 
 
@@ -18,9 +19,13 @@ def fetch_analysis():
 
     csv = fetch_analysis_from_ocr(content['JobId'])
 
-    print(type(csv))
-    result = gstinResponse.create_gstin_response(csv)
-    print(result)
+    # print(type(csv))
+
+    if content['file_type'] == 'gst':
+        result = gstinResponse.create_gstin_response(csv)
+    else:
+        result = msmeResponse.create_msme_response(csv)
+    #print(result)
     return result
 
 
@@ -39,35 +44,46 @@ def fetch_analysis_from_ocr(job_id):
         JobId=job_id
     )
 
-    #print(response)
-    blocks = response['Blocks']
-    #print(blocks)
+    with open('msmeJson.json', 'w') as file:
+        file.write(json.dumps(response))
 
-    blocks_map = {}
-    table_blocks = []
-    for block in blocks:
-        blocks_map[block['Id']] = block
-        if block['BlockType'] == "TABLE":
-            table_blocks.append(block)
+    # msmeResponse.fetchKeys(response)
 
-    if len(table_blocks) <= 0:
-        return "<b> NO Table FOUND </b>"
+    return response
 
-    result = []
-    for index, table in enumerate(table_blocks):
-        result = ocr.generate_table_csv(table, blocks_map, index + 1)
-        break
 
-    print(result)
-    print(type(result))
-
-    # csv = ''
-    # for index, table in enumerate(table_blocks):
-    #     csv += ocr.generate_table_csv(table, blocks_map, index + 1)
-    #     csv += '\n\n'
+    # print(response)
     #
-    # return csv
-    return result
+    # # {'JobStatus': 'IN_PROGRESS', 'AnalyzeDocumentModelVersion': '1.0', 'ResponseMetadata': {'RequestId': '3fbbf708-ca5c-44d8-8369-3b1eb09df37e', 'HTTPStatusCode': 200, 'HTTPHeaders': {'x-amzn-requestid': '3fbbf708-ca5c-44d8-8369-3b1eb09df37e', 'content-type': 'application/x-amz-json-1.1', 'content-length': '63', 'date': 'Thu, 21 Jan 2021 14:45:36 GMT'}, 'RetryAttempts': 0}}
+    # blocks = response['Blocks']
+    # #print(blocks)
+    #
+    # blocks_map = {}
+    # table_blocks = []
+    # for block in blocks:
+    #     blocks_map[block['Id']] = block
+    #     if block['BlockType'] == "TABLE":
+    #         table_blocks.append(block)
+    #
+    # if len(table_blocks) <= 0:
+    #     return "<b> NO Table FOUND </b>"
+    #
+    # result = []
+    # for index, table in enumerate(table_blocks):
+    #     result = ocr.generate_table_csv(table, blocks_map, index + 1)
+    #     break
+    # # print(table_blocks)
+    # #print(result)
+    #
+    # #print(type(result))
+    #
+    # # csv = ''
+    # # for index, table in enumerate(table_blocks):
+    # #     csv += ocr.generate_table_csv(table, blocks_map, index + 1)
+    # #     csv += '\n\n'
+    # #
+    # # return csv
+    # return result
 
 
 def start_analysis_from_s3(file_name, fileType):
@@ -85,7 +101,7 @@ def start_analysis_from_s3(file_name, fileType):
                 'Bucket': bucket,
                 'Name': file_name,
             }, },
-        FeatureTypes=['TABLES'],
+        FeatureTypes=['FORMS'],
         JobTag=fileType,
         NotificationChannel={
             'SNSTopicArn': snsTopic,
