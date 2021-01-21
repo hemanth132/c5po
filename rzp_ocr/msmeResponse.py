@@ -1,133 +1,62 @@
-import json
+class MsmeResponse:
+    def __init__(self, response):
+        self.response = response
+        self.blocks = self.response['Blocks']
+        self.name_of_enterprise_index = -1
+        self.name_of_entrepreneur_index = -1
+        self.type_of_organization = -1
+        self.type_of_enterprise = -1
+        self.is_memorandum = False
+        self.parse_response()
 
-def create_msme_response(csv):
-    result = {}
+    def parse_response(self):
+        index = 0
+        for block in self.blocks:
+            if block['BlockType'] == 'LINE':
+                if 'NAME OF ENTERPRISE' in block['Text'].upper():
+                    self.name_of_enterprise_index = index + 1
+                elif 'NAME OF ENTREPRENEUR' in block['Text'].upper():
+                    self.name_of_entrepreneur_index = index + 1
+                elif 'TYPE OF ORGANIZATION' in block['Text'].upper():
+                    self.type_of_organization = index + 1
+                elif 'TYPE OF ENTERPRISE' in block['Text'].upper() or 'ENTERPRISE TYPE' in block['Text'].upper():
+                    self.type_of_enterprise = index + 1
+                elif 'MEMORANDUM' in block['Text'].upper():
+                    self.is_memorandum = True
+            index = index + 1
 
-    result['enterprise_name'] = fetch_name_of_enterprise(csv)
-    result["entrepreneur_name"] = fetch_name_of_entrepreneur(csv)
-    result['type_of_organization'] = fetch_type_of_organization(csv)
-    result['type_of_enterprise'] = fetch_type_of_enterprise(csv)
+    def fetch_name_of_enterprise(self):
+        if self.name_of_enterprise_index == -1:
+            return None
 
-    return result
+        return self.blocks[self.name_of_enterprise_index]['Text']
 
+    def fetch_name_of_entrepreneur(self):
+        if self.name_of_entrepreneur_index == -1:
+            return None
 
-def fetch_name_of_enterprise(data):
-    blocks = data['Blocks']
-    textBlock = []
-    index = 0
-    name_of_enterprise_index = 0
-    print(type(blocks))
-    for block in blocks:
-        if block['BlockType'] == 'LINE':
-            text = block['Text']
-            # print(text)
-            if 'NAME OF ENTERPRISE' in text.upper():
-                textBlock = block
-                name_of_enterprise_index = index + 1
-        index = index + 1
+        return self.blocks[self.name_of_entrepreneur_index]['Text']
 
-    name_print = blocks[name_of_enterprise_index]
+    def fetch_type_of_organization(self):
+        if self.type_of_organization == -1:
+            return None
 
-    if 'Text' in name_print:
-        return name_print['Text']
-    return None
+        return self.blocks[self.type_of_organization]['Text']
 
+    def fetch_type_of_enterprise(self):
+        if self.is_memorandum:
+            return None
+        if self.type_of_enterprise == -1:
+            return None
 
+        return self.blocks[self.type_of_enterprise]['Text']
 
+    def create_response(self):
+        result = {}
 
-def fetch_name_of_entrepreneur(data):
-    blocks = data['Blocks']
-    textBlock = []
-    index = 0
-    type_of_enterprise_index = 0
-    print(type(blocks))
-    for block in blocks:
-        if block['BlockType'] == 'LINE':
-            text = block['Text']
-            if 'NAME OF ENTREPRENEUR' in text.upper():
-                print(block)
-                textBlock = block
-                type_of_enterprise_index = index + 1
-        index = index + 1
+        result['enterprise_name'] = self.fetch_name_of_enterprise()
+        result["entrepreneur_name"] = self.fetch_name_of_entrepreneur()
+        result['type_of_organization'] = self.fetch_type_of_organization()
+        result['type_of_enterprise'] = self.fetch_type_of_enterprise()
 
-    name_print = blocks[type_of_enterprise_index]
-
-    if 'Text' in name_print:
-        return name_print['Text']
-    return None
-
-
-def fetch_type_of_organization(data):
-    blocks = data['Blocks']
-    textBlock = []
-    index = 0
-    type_of_enterprise_index = 0
-    print(type(blocks))
-    for block in blocks:
-        if block['BlockType'] == 'LINE':
-            text = block['Text']
-            print(text)
-            if 'TYPE OF ORGANIZATION' in text.upper():
-                print(block)
-                textBlock = block
-                type_of_enterprise_index = index + 1
-        index = index + 1
-
-    name_print = blocks[type_of_enterprise_index]
-
-    if 'Text' in name_print:
-        return name_print['Text']
-    return None
-
-
-def fetch_type_of_enterprise(data):
-
-    blocks = data['Blocks']
-    textBlock = []
-    index = 0
-    type_of_enterprise_index = 0
-    print(type(blocks))
-    for block in blocks:
-        if block['BlockType'] == 'LINE':
-            text = block['Text']
-            if 'MEMORANDUM' in text.upper():
-                return None
-
-            if 'TYPE OF ENTERPRISE' in text.upper() or 'ENTERPRISE TYPE' in text.upper():
-                print(block)
-                textBlock = block
-                type_of_enterprise_index = index + 1
-        index = index + 1
-
-    name_print = blocks[type_of_enterprise_index]
-
-    if 'Text' in name_print:
-        return name_print['Text']
-    return None
-
-
-def fetchKeys(data):
-    blocks = data['Blocks']
-    textBlock = []
-    index = 0
-    name_of_enterprise_index = 0
-    print(type(blocks))
-    for block in blocks:
-        if block['BlockType'] == 'LINE':
-            text = block['Text']
-            if text == 'NAME OF ENTERPRISE':
-                print(block)
-                textBlock = block
-                name_of_enterprise_index = index+1
-        index = index+1
-
-
-    name_print = blocks[name_of_enterprise_index]
-
-    print(name_print['Text'])
-
-
-    return name_print['Text']
-
-
-
+        return result
